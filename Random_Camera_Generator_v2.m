@@ -59,16 +59,5 @@ function waveform = generateWaveform(edge)
     edgeL = edge(1);
     edgeR = edge(2);
     %edge is in physical inch value, waveform is pixel
-    %ratios
-    rat1 = edgeL/24;
-    rat2 = edgeR/24;
-    edgeL = rat1 * 128;
-    edgeR = rat2 * 128;
-    edgeR = 128 - edgeR;
-    edgeL = int16(edgeL);
-    edgeR = int16(edgeR);
-    %add and subtract 1 because indexing includes both boundaries
-    waveform(1:edgeL-1) = waveform(1:edgeL-1) + 1;
-    waveform(edgeL:edgeR) = waveform(edgeL:edgeR) + 6.6;
-    waveform(edgeR+1:128) = waveform(edgeR+1:128) + 1;
+
 end
