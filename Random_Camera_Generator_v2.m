@@ -50,7 +50,7 @@ function edge = pos2edge(position)
     
 end
 
-function waveform = generateWaveform(edge)
+function shiftedWaveform = generateWaveform(edge)
     %input: d from track edge in array [x y]
     %where x is d from left edge, y is d from right
     % 0<x=y<24, 0 and 24 is cam on edge
@@ -59,5 +59,32 @@ function waveform = generateWaveform(edge)
     edgeL = edge(1);
     edgeR = edge(2);
     %edge is in physical inch value, waveform is pixel
-
+    %no matter values of edgeL, edgeR, track waveform same.
+    edgeStrength = int16(20); %~in px, could use rand to randomize
+    trackCenter = int16(80); %~in px, could use rand to randomize
+    
+    center = int16(64);
+    centerLStart = center - (trackCenter/2);
+    centerRStart = center + (trackCenter/2);
+    edgeLStart = centerLStart - edgeStrength;
+    edgeRStart = centerRStart + edgeStrength;
+    
+    waveform(edgeLStart:centerLStart-1) = waveform(edgeLStart:centerLStart-1) + 2.5;
+    waveform(centerLStart:centerRStart) = waveform(centerLStart:centerRStart) + 5.5;
+    waveform(centerRStart+1:edgeRStart) = waveform(centerRStart+1:edgeRStart) + 2.5;
+    %^ IS DEFAULT P the only thing that edgeL, edgeR changes is the shifting of graph
+    %TEMPORARY SHIFT METHOD: Subtraction. Obviously wrong. 
+    
+    shiftN = edgeR - edgeL;
+    shiftedWaveform = zeros(size(waveform));
+    if shiftN > 0
+       shiftedWaveform(1+shiftN:end) = waveform(1:end-shiftN);
+    elseif shiftN < 0 
+       shiftN = abs(shiftN);
+       shiftedWaveform(1:end-shiftN) = waveform(1+shiftN:end);
+    elseif shiftN == 0
+        shiftedWaveform = waveform;
+    end
+    
+    shiftedWaveform = shiftedWaveform + 1;
 end
