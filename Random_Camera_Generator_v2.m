@@ -1,16 +1,23 @@
+%VEHICLE MODEL TO CAMERA
+%input position of car, angle
+%output waveform the linescan camera would output at that location
+%ease of life todo: implement Preset instead of Postset for addlistener
+%callback, so that don't need to let go of slider
+
+
 clc, clf, clear;
 
-edge = [4, 4];
 f2 = figure('position', [360 500 400 400]);
+defaultAx = get(gca);
+defaultAx.YAxis.Visible = 'off'; % remove y-axis
+defaultAx.XAxis.Visible = 'off'; % remove x-axis
+
 hold on;
-plot(x,y);
-title("Linescan Camera Waveform");
-xlabel("Pixel");
-ylabel("Greyscale Value");
-xlim([1, 128]);
-ylim([0,7]);
-
-
+posSlider(f2);
+edgeLText = uicontrol('style','text', 'position', [50 280 50 30]);
+edgeRText = uicontrol('style','text', 'position', [300 280 50 30]);
+edgeLText.String = "Left Edge"
+edgeRText.String = "Right Edge"
 function posSlider(f2)
     %axes initialization
     waveformAxes = axes(f2);
@@ -25,19 +32,19 @@ function posSlider(f2)
     
     x = linspace(1, 128, 128);
     %ideally y should be a function of x, could change later
-    edge = [4,4];
-    
+    edge = [0,24];
     y = generateWaveform(edge);
     lineH = plot(x,y);
     sliderVal = uicontrol('style','text', 'position', [170 340 40 15]);
-    sliderH = uicontrol('style','slider','position', [100 280 200 20], 'min', 0, 'max', 24);
+    sliderH = uicontrol('style','slider','position', [100 300 200 20], 'min', 0, 'max', 24);
     %car will have a position of 0-24 inches on the 24 inch track
-    addlistener(sliderH, 'Value', 'PreSet', @callbackFunction);
+    addlistener(sliderH, 'Value', 'PostSet', @callbackFunction);
     movegui(f2, 'center')
     function callbackFunction(source, event)
         num = get(event.AffectedObject, 'Value');
         %a value 0-24
-        lineH.YData  = sin(num * x);
+        edge = pos2edge(num);
+        lineH.YData  = generateWaveform(edge);
         sliderVal.String = num2str(num);
     end
 end
@@ -45,9 +52,12 @@ end
 function edge = pos2edge(position)
     %turn the 0-24 inch pos input into an array with [x y] where x is  
     %inches from left edge of track and y is inches from right edge
-    edgeStrength = 2;
     %constant: how many inches is black edge??? TO UPDATE TODO
+    edgeL = position - 0;
+    edgeR = 24 - position;
+    edge = [edgeL edgeR];
     
+    %potential issue: does not consider the thickness of edge. TO CHECK 
 end
 
 function shiftedWaveform = generateWaveform(edge)
@@ -75,7 +85,7 @@ function shiftedWaveform = generateWaveform(edge)
     %^ IS DEFAULT P the only thing that edgeL, edgeR changes is the shifting of graph
     %TEMPORARY SHIFT METHOD: Subtraction. Obviously wrong. 
     
-    shiftN = edgeR - edgeL;
+    shiftN = round(edgeR - edgeL);
     shiftedWaveform = zeros(size(waveform));
     if shiftN > 0
        shiftedWaveform(1+shiftN:end) = waveform(1:end-shiftN);
