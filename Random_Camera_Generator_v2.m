@@ -14,10 +14,10 @@ defaultAx.XAxis.Visible = 'off'; % remove x-axis
 
 hold on;
 posSlider(f2);
-edgeLText = uicontrol('style','text', 'position', [50 280 50 30]);
-edgeRText = uicontrol('style','text', 'position', [300 280 50 30]);
-edgeLText.String = "Left Edge"
-edgeRText.String = "Right Edge"
+edgeLText = uicontrol('style','text', 'position', [50 295 50 30]);
+edgeRText = uicontrol('style','text', 'position', [300 295 50 30]);
+edgeLText.String = "Left Edge";
+edgeRText.String = "Right Edge";
 function posSlider(f2)
     %axes initialization
     waveformAxes = axes(f2);
@@ -33,20 +33,36 @@ function posSlider(f2)
     x = linspace(1, 128, 128);
     %ideally y should be a function of x, could change later
     edge = [0,24];
-    y = generateWaveform(edge);
+    lineInitial = generateWaveform(edge);
+    noiseInitial = generateNoise(lineInitial);
+    y = lineInitial + noiseInitial;
     lineH = plot(x,y);
-    sliderVal = uicontrol('style','text', 'position', [170 340 40 15]);
-    sliderH = uicontrol('style','slider','position', [100 300 200 20], 'min', 0, 'max', 24);
+    sliderVal = uicontrol('style','text', 'position', [140 340 120 15]);
+    sliderPos = uicontrol('style','slider','position', [100 300 200 20], 'min', 0, 'max', 24);
     %car will have a position of 0-24 inches on the 24 inch track
-    addlistener(sliderH, 'Value', 'PostSet', @callbackFunction);
+    addlistener(sliderPos, 'Value', 'PostSet', @callbackFunction);
     movegui(f2, 'center')
     function callbackFunction(source, event)
         num = get(event.AffectedObject, 'Value');
         %a value 0-24
         edge = pos2edge(num);
-        lineH.YData  = generateWaveform(edge);
-        sliderVal.String = num2str(num);
+        line = generateWaveform(edge);
+        noise = generateNoise(line);
+        out = line + noise;
+        lineH.YData  = out;
+        sliderVal.String = strcat(num2str(num), " inches");
     end
+end
+
+function noise = generateNoise(waveform)
+    %the lower signal to noise ratio, the more noisy function
+    regsnr = 33;
+    waveLength = length(waveform);
+    signalPower = (sum(abs(waveform).^2))/waveLength;
+    noisePower =  signalPower/(10^(regsnr/10));
+    %we want random amount of additon/subtraction: range (-1,1)
+    randomArr = (2 .* rand(1,waveLength)) - 1;
+    noise = sqrt(noisePower) * randomArr;
 end
 
 function edge = pos2edge(position)
@@ -84,7 +100,6 @@ function shiftedWaveform = generateWaveform(edge)
     waveform(centerRStart+1:edgeRStart) = waveform(centerRStart+1:edgeRStart) + 2.5;
     %^ IS DEFAULT P the only thing that edgeL, edgeR changes is the shifting of graph
     %TEMPORARY SHIFT METHOD: Subtraction. Obviously wrong. 
-    
     shiftN = round(edgeR - edgeL);
     shiftedWaveform = zeros(size(waveform));
     if shiftN > 0
