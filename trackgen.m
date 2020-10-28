@@ -13,11 +13,12 @@ clc, clear;
 frequency = 0; % value range [0,5]
 show_process = 1;  % 1: show section locations in the figure, 0: don't show
 show_loc = 1;  % 1: show section locations in the figure, 0: don't show
+show_grid = 1;
 full_plot = [];
 
 % ask user to input the target track length
-target_length = input('Input Target Track Length (Even Number, Greater than 4): ');
-
+%target_length = input('Input Target Track Length (Even Number, Greater than 4): ');
+target_length = 8;
 % define the initial 4-segment track loop
 track = 'LLLL';
 track_length = 4;
@@ -36,6 +37,7 @@ done = 0;
 overlap = 0;
 
 % figure initialization
+%want to specify axes and center, otherwise axes are randomized every time
 f1 = figure;
 x0 = 10;
 y0 = 10;
@@ -208,8 +210,151 @@ while track_length ~= target_length
     end
 end
 
+%track created
+
+car_pos = [0,0];
+%identify track piece before, current, and future
+%at the moment, all track works in relative manner- based on previous
+minY = s(1).tile(2);
+minX = s(1).tile(1);
+
+for i=1:length(s)
+    if s(i).tile(1)<minX
+        minX = s(i).tile(1);
+    end
+end
+for i=1:length(s)
+    if s(i).tile(2)<minY
+        minY = s(i).tile(2);
+    end
+end
+%minY and minX should be bot left corner tile center
+minX = minX-2;
+minY = minY-2;
+maxX = int16(10);
+maxY = int16(10);
+%want max to be number so guarentees clean multiples
+multipleX = idivide(maxX, 4, 'floor');
+multipleY = idivide(maxY, 4, 'floor');
+maxX = (1 + multipleX) * 4;
+maxY = (1 + multipleY) * 4;
+gridlines(minX, maxX, minY, maxY, 4, 4, show_grid);
+
+
+for i=1:length(s)
+    tile_center = s(i).tile;
+    tile_range = [tile_center(1)-2 tile_center(1)+2 ; tile_center(2)-2 tile_center(2)+2];
+    if (tile_range(1,1) <= car_pos(1)) && (car_pos(1) <= tile_range(1,2)) && (tile_range(2,1) <= car_pos(2)) && (car_pos(2) <= tile_range(2,2)) 
+        ct_index = i;
+    end
+end
+
+current_tile = s(ct_index);
+
+if ct_index+1 <= length(s)
+    %check negative condition, under first
+    next_tile = s(ct_index+1);
+else
+    next_tile = s(1);
+end
+
+if ct_index-1 >= 0
+    %check negative condition, positive first
+    prev_tile = s(ct_index-1);
+else
+    prev_tile = s(end);
+end
+
 % output track info
-output_track(track, track_length, s, show_loc, f1);
+%output_track(track, track_length, s, show_loc, f1);
+
+function gridlines(minX, maxX, minY, maxY, intervalX, intervalY, show_grid)
+    if show_grid
+        for row = minY: intervalY : maxY
+            line([minX, maxY], [row, row], 'Color', 'r');
+        end
+        for col = minX : intervalX : maxX
+            line([col, col], [minY, maxX], 'Color', 'r');
+        end
+    end
+end
+
+function joined_line = generate_joined_line(prev_tile, next_tile, current_tile)
+    %check what type (F/L/R) each section is
+    tile_arr = [prev_tile next_tile current_tile];
+    reconstructed = struct();
+    for i=1:length(tile_arr)
+        if tile_arr(i).weight == 4
+            %F
+            reconstructed(i).type = 'F';
+            if tile_arr(i).dir(1) ~= 0
+                x1_s1 = tile_arr(i).loc(1);
+                x2_s1 = tile_arr(i+1).loc(1);
+                y1_s1 = tile_arr(i).loc(2)+1;
+                y1_s2 = tile_arr(i).loc(2)-1;
+                x_s1 = linspace(x1_s1,x2_s1);
+                x_length = length(xRange);
+                y_s1 = zeros(x_length) + y1_s1;
+                x_s2 = linspace(x1_s1,x2_s1);
+                y_s2 = zeros(x_length) + y1_s2;
+            else
+                x1_s1 = tile_arr(i).loc(1)-1;
+                x1_s2 = tile_arr(i).loc(1)+1;
+                y1_s1 = tile_arr(i).loc(2);
+                y2_s1 = tile_arr(i+1).loc(2);
+                y_s1 = linspace(y1_s1,y2_s1);
+                y_length = length(yRange);
+                x_s1 = zeros(y_length) + x1_s1;
+                y_s2 = linspace(y1_s1,y2_s1);
+                x_s2 = zeros(y_length) + x1_s2;
+            end
+            reconstructed(i).xRangeS1 = x_s1;
+            reconstructed(i).xRangeS2 = x_s2;
+            reconstructed(i).yRangeS1 = y_s1;
+            reconstructed(i).yRange(S2) = y_s2;
+        elseif tile_arr(i).angle == 90
+            %L
+            reconstructed(i).type = 'L';
+            if tile_arr(i).dir(1) ~= 0
+                centerX = tile_arr(i).loc(1);
+                if tile_arr(i).dir(1) > 0
+                    centerY = tile_arr(i).loc(2) + 2;
+                    
+                else
+                    centerY = tile_arr(i).loc(2) - 2;
+                end
+            else
+                centerY = tile_arr(i).loc(2);
+                if tile_arr(i).dir(2) > 0
+                    centerX = tile_arr(i).loc(1) - 2;
+                else
+                    centerX = tile_arr(i).loc(1) + 2;
+                end
+            
+            end
+        elseif tile_arr(i).angle == -90
+            %R
+            reconstructed(i).type = 'R';
+            if tile_arr(i).dir(1) ~= 0
+                centerX = tile_arr(i).loc(1);
+                if tile_arr(i).dir(1) > 0
+                    centerY = tile_arr(i).loc(2) - 2;
+                else
+                    centerY = tile_arr(i).loc(2) + 2;
+                end
+            else
+                centerY = tile_arr(i).loc(2);
+                if tile_arr(i).dir(2) > 0
+                    centerX = tile_arr(i).loc(1) + 2;
+                else
+                    centerX = tile_arr(i).loc(1) - 2;
+                end
+            
+        end
+         
+    end
+    
+end
 
 % ckeckOverlap function
 function overlap = checkOverlap(s)
