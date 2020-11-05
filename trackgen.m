@@ -211,8 +211,14 @@ while track_length ~= target_length
 end
 
 %track created
-
+car_angle = 0;
+cam_height = 2;
+aov = pi/3;
+cam_angle = pi/6;
 car_pos = [0,0];
+carX = car_pos(1);
+carY = car_pos(2);
+plot(carX, carY, '.', 'MarkerSize', 30, 'Color', 'g')
 %identify track piece before, current, and future
 %at the moment, all track works in relative manner- based on previous
 minY = s(1).tile(2);
@@ -240,7 +246,6 @@ maxX = (1 + multipleX) * 4;
 maxY = (1 + multipleY) * 4;
 gridlines(minX, maxX, minY, maxY, 4, 4, show_grid);
 
-
 for i=1:length(s)
     tile_center = s(i).tile;
     tile_range = [tile_center(1)-2 tile_center(1)+2 ; tile_center(2)-2 tile_center(2)+2];
@@ -258,15 +263,56 @@ else
     next_tile = s(1);
 end
 
-if ct_index-1 >= 0
+if ct_index-1 > 0
     %check negative condition, positive first
     prev_tile = s(ct_index-1);
 else
     prev_tile = s(end);
 end
 
+if ct_index+2 <= length(s)
+    next_tile2 = s(ct_index+2);
+elseif ct_index+2 == length(s)+1
+    next_tile(2) = s(1);
+else
+    next_tile2 = s(2);
+end
+
+if ct_index-2 > 0
+    prev_tile2 = s(ct_index-2);
+elseif ct_index-2 == 0
+    prev_tile2 = s(end);
+else
+    prev_tile2 = s(end-1);
+end
+
+coord_arr = generate_joined_line(prev_tile2, prev_tile, current_tile, next_tile, next_tile2);
+plot(coord_arr{1,1}, coord_arr{1,2}, 'Color', 'b', 'LineWidth', 4);
+plot(coord_arr{1,3}, coord_arr{1,4}, 'Color', 'r', 'LineWidth', 4);
+
+cam_bounds = find_cam_boundary(car_pos, car_angle, cam_height, aov, cam_angle);
+plot(cam_bounds{1,1}(1), cam_bounds{1,1}(2), '.', 'MarkerSize', 20, 'Color', 'm');
+plot(cam_bounds{1,2}(1), cam_bounds{1,2}(2), '.', 'MarkerSize', 20, 'Color', 'm');
+plot(cam_bounds{1,3}(1), cam_bounds{1,3}(2), '.', 'MarkerSize', 20, 'Color', 'm');
+
+linescanX = linspace(cam_bounds{1,1}(1), cam_bounds{1,2}(1));
+linescanY = linspace(cam_bounds{1,1}(2), cam_bounds{1,2}(2));
+plot(linescanX, linescanY, 'Color', 'm');
+cam_inner = InterX([linescanX;linescanY],[coord_arr{1,1};coord_arr{1,2}]);
+cam_outer = InterX([linescanX;linescanY],[coord_arr{1,3};coord_arr{1,4}]);
+plot_intersect(cam_inner, cam_outer);
+
 % output track info
 %output_track(track, track_length, s, show_loc, f1);
+
+function plot_intersect(cam_inner, cam_outer)
+    if ~isempty(cam_inner)
+        plot(cam_inner(1), cam_inner(2), 'x', 'MarkerSize', 20, 'Color', 'k');
+    end
+    if ~isempty(cam_outer)
+        plot(cam_outer(1), cam_outer(2), 'x', 'MarkerSize', 20, 'Color', 'k');
+    end    
+end
 
 function gridlines(minX, maxX, minY, maxY, intervalX, intervalY, show_grid)
     if show_grid
@@ -279,59 +325,144 @@ function gridlines(minX, maxX, minY, maxY, intervalX, intervalY, show_grid)
     end
 end
 
-function joined_line = generate_joined_line(prev_tile, next_tile, current_tile)
+function P = InterX(L1,varargin)
+    %...Argument checks and assignment of L2
+    error(nargchk(1,2,nargin));
+    if nargin == 1,
+        L2 = L1;    hF = @lt;   %...Avoid the inclusion of common points
+    else
+        L2 = varargin{1}; hF = @le;
+    end
+       
+    %...Preliminary stuff
+    x1  = L1(1,:)';  x2 = L2(1,:);
+    y1  = L1(2,:)';  y2 = L2(2,:);
+    dx1 = diff(x1); dy1 = diff(y1);
+    dx2 = diff(x2); dy2 = diff(y2);
+    
+    %...Determine 'signed distances'   
+    S1 = dx1.*y1(1:end-1) - dy1.*x1(1:end-1);
+    S2 = dx2.*y2(1:end-1) - dy2.*x2(1:end-1);
+    
+    C1 = feval(hF,D(bsxfun(@times,dx1,y2)-bsxfun(@times,dy1,x2),S1),0);
+    C2 = feval(hF,D((bsxfun(@times,y1,dx2)-bsxfun(@times,x1,dy2))',S2'),0)';
+
+    %...Obtain the segments where an intersection is expected
+    [i,j] = find(C1 & C2); 
+    if isempty(i),P = zeros(2,0);return; end;
+    
+    %...Transpose and prepare for output
+    i=i'; dx2=dx2'; dy2=dy2'; S2 = S2';
+    L = dy2(j).*dx1(i) - dy1(i).*dx2(j);
+    i = i(L~=0); j=j(L~=0); L=L(L~=0);  %...Avoid divisions by 0
+    
+    %...Solve system of eqs to get the common points
+    P = unique([dx2(j).*S1(i) - dx1(i).*S2(j), ...
+                dy2(j).*S1(i) - dy1(i).*S2(j)]./[L L],'rows')';
+              
+    function u = D(x,y)
+        u = bsxfun(@minus,x(:,1:end-1),y).*bsxfun(@minus,x(:,2:end),y);
+    end
+end
+
+function coord_array = generate_joined_line(prev_tile2, prev_tile, current_tile, next_tile, next_tile2)
     %check what type (F/L/R) each section is
-    tile_arr = [prev_tile next_tile current_tile];
+    tile_arr = [prev_tile2 prev_tile current_tile next_tile next_tile2];
     reconstructed = struct();
-    for i=1:length(tile_arr)
+    for i=2:length(tile_arr)-1
+        %don't want to actually iterate over prev_tile2, next_tile2... bad
+        %solution though
         if tile_arr(i).weight == 4
             %F
-            reconstructed(i).type = 'F';
+            reconstructed(i-1).type = 'F';
             if tile_arr(i).dir(1) ~= 0
-                x1_s1 = tile_arr(i).loc(1);
-                x2_s1 = tile_arr(i+1).loc(1);
+                x1_s1 = tile_arr(i-1).loc(1);
+                x2_s1 = tile_arr(i).loc(1);
                 y1_s1 = tile_arr(i).loc(2)+1;
                 y1_s2 = tile_arr(i).loc(2)-1;
                 x_s1 = linspace(x1_s1,x2_s1);
-                x_length = length(xRange);
-                y_s1 = zeros(x_length) + y1_s1;
+                x_length = length(x_s1);
+                y_s1 = zeros(1,x_length) + y1_s1;
                 x_s2 = linspace(x1_s1,x2_s1);
-                y_s2 = zeros(x_length) + y1_s2;
+                y_s2 = zeros(1,x_length) + y1_s2;
             else
                 x1_s1 = tile_arr(i).loc(1)-1;
                 x1_s2 = tile_arr(i).loc(1)+1;
-                y1_s1 = tile_arr(i).loc(2);
-                y2_s1 = tile_arr(i+1).loc(2);
+                y1_s1 = tile_arr(i-1).loc(2);
+                y2_s1 = tile_arr(i).loc(2);
                 y_s1 = linspace(y1_s1,y2_s1);
-                y_length = length(yRange);
-                x_s1 = zeros(y_length) + x1_s1;
+                y_length = length(y_s1);
+                x_s1 = zeros(1,y_length) + x1_s1;
                 y_s2 = linspace(y1_s1,y2_s1);
-                x_s2 = zeros(y_length) + x1_s2;
+                x_s2 = zeros(1,y_length) + x1_s2;
             end
-            reconstructed(i).xRangeS1 = x_s1;
-            reconstructed(i).xRangeS2 = x_s2;
-            reconstructed(i).yRangeS1 = y_s1;
-            reconstructed(i).yRange(S2) = y_s2;
+            reconstructed(i-1).xRangeS1 = x_s1;
+            reconstructed(i-1).xRangeS2 = x_s2;
+            reconstructed(i-1).yRangeS1 = y_s1;
+            reconstructed(i-1).yRangeS2 = y_s2;
         elseif tile_arr(i).angle == 90
             %L
-            reconstructed(i).type = 'L';
+            reconstructed(i-1).type = 'L';
             if tile_arr(i).dir(1) ~= 0
                 centerX = tile_arr(i).loc(1);
                 if tile_arr(i).dir(1) > 0
                     centerY = tile_arr(i).loc(2) + 2;
-                    
+                    x1_s1 = tile_arr(i-1).loc(1) + 1;
+                    x2_s1 = centerX;
+                    x1_s2 = tile_arr(i-1).loc(1) - 1;
+                    x2_s2 = centerX;
+                    x_s1 = linspace(x1_s1, x2_s1);
+                    x_s2 = linspace(x1_s2, x2_s2);
+                    th_s1 = -acos(x_s1-centerX);
+                    th_s2 = -acos((x_s2-centerX)/3);
+                    y_s1 = sin(th_s1) + centerY;
+                    y_s2 = 3*sin(th_s2) + centerY;
                 else
                     centerY = tile_arr(i).loc(2) - 2;
+                    x1_s1 = centerX;
+                    x2_s1 = tile_arr(i-1).loc(1) - 1;
+                    x1_s2 = centerX;
+                    x2_s2 = tile_arr(i-1).loc(1) + 1;
+                    x_s1 = linspace(x1_s1, x2_s1);
+                    x_s2 = linspace(x1_s2, x2_s2);
+                    th_s1 = -acos(x_s1-centerX);
+                    th_s2 = -acos((x_s2-centerX)/3);
+                    y_s1 = sin(th_s1) + centerY;
+                    y_s2 = 3*sin(th_s2) + centerY;
                 end
             else
                 centerY = tile_arr(i).loc(2);
                 if tile_arr(i).dir(2) > 0
                     centerX = tile_arr(i).loc(1) - 2;
+                    x1_s1 = centerX;
+                    x2_s1 = tile_arr(i).loc(1) - 1;
+                    x1_s2 = centerX;
+                    x2_s2 = tile_arr(i).loc(1) + 1;
+                    x_s1 = linspace(x1_s1, x2_s1);
+                    x_s2 = linspace(x1_s2, x2_s2);
+                    th_s1 = -acos(x_s1-centerX);
+                    th_s2 = -acos((x_s2-centerX)/3);
+                    y_s1 = sin(th_s1) + centerY;
+                    y_s2 = 3*sin(th_s2) + centerY;
                 else
                     centerX = tile_arr(i).loc(1) + 2;
+                    x1_s1 = tile_arr(i).loc(1) + 1;
+                    x2_s1 = centerX;
+                    x1_s2 = tile_arr(i).loc(1) - 1;
+                    x2_s2 = centerX;
+                    x_s1 = linspace(x1_s1, x2_s1);
+                    x_s2 = linspace(x1_s2, x2_s2);
+                    th_s1 = acos(x_s1-centerX);
+                    th_s2 = acos((x_s2-centerX)/3);
+                    y_s1 = sin(th_s1) + centerY;
+                    y_s2 = 3*sin(th_s2) + centerY;
                 end
-            
             end
+            reconstructed(i-1).xRangeS1 = x_s1;
+            reconstructed(i-1).xRangeS2 = x_s2;
+            reconstructed(i-1).yRangeS1 = y_s1;
+            reconstructed(i-1).yRangeS2 = y_s2;
+
         elseif tile_arr(i).angle == -90
             %R
             reconstructed(i).type = 'R';
@@ -339,21 +470,97 @@ function joined_line = generate_joined_line(prev_tile, next_tile, current_tile)
                 centerX = tile_arr(i).loc(1);
                 if tile_arr(i).dir(1) > 0
                     centerY = tile_arr(i).loc(2) - 2;
+                    %duplicates, should probably just include outside of
+                    %loop
+                    x1_s1 = tile_arr(i-1).loc(1) + 1;
+                    x2_s1 = centerX;
+                    x_s1 = linspace(x1_s1, x2_s1);
+                    x1_s2 = tile_arr(i-1).loc(1) - 1;
+                    x2_s2 = centerX;
+                    x_s2 = linspace(x1_s2, x2_s2);
+                    th_s1 = acos(x_s1-centerX);
+                    th_s2 = acos((x_s2-centerX)/3);
+                    y_s1 = sin(th_s1) + centerY;
+                    y_s2 = 3*sin(th_s2) + centerY;
                 else
                     centerY = tile_arr(i).loc(2) + 2;
+                    x1_s1 = centerX;
+                    x2_s1 = tile_arr(i-1).loc(1) - 1;
+                    x_s1 = linspace(x1_s1, x2_s1);
+                    x1_s2 = centerX;
+                    x2_s2 = tile_arr(i-1).loc(1) + 1;
+                    x_s2 = linspace(x1_s2, x2_s2);
+                    th_s1 = -acos(x_s1-centerX);
+                    th_s2 = -acos((x_s2-centerX)/3);
+                    y_s1 = sin(th_s1) + centerY;
+                    y_s2 = 3*sin(th_s2) + centerY;
                 end
             else
                 centerY = tile_arr(i).loc(2);
                 if tile_arr(i).dir(2) > 0
                     centerX = tile_arr(i).loc(1) + 2;
+                    x1_s1 = tile_arr(i).loc(1) + 1;
+                    x2_s1 = centerX;
+                    x_s1 = linspace(x1_s1, x2_s1);
+                    x1_s2 = tile_arr(i).loc(1) - 1;
+                    x2_s2 = centerX;
+                    x_s2 = linspace(x1_s2, x2_s2);
+                    th_s1 = -acos(x_s1-centerX);
+                    th_s2 = -acos((x_s2-centerX)/3);
+                    y_s1 = sin(th_s1) + centerY;
+                    y_s2 = 3*sin(th_s2) + centerY;
                 else
                     centerX = tile_arr(i).loc(1) - 2;
+                    x1_s1 = centerX;
+                    x2_s1 = tile_arr(i).loc(1) - 1;
+                    x_s1 = linspace(x1_s1, x2_s1);
+                    x1_s2 = centerX;
+                    x2_s2 = tile_arr(i).loc(1) + 1;
+                    x_s2 = linspace(x1_s2, x2_s2);
+                    th_s1 = acos(x_s1-centerX);
+                    th_s2 = acos((x_s2-centerX)/3);
+                    y_s1 = sin(th_s1) + centerY;
+                    y_s2 = 3*sin(th_s2) + centerY;
                 end
-            
+            end
+            reconstructed(i-1).xRangeS1 = x_s1;
+            reconstructed(i-1).xRangeS2 = x_s2;
+            reconstructed(i-1).yRangeS1 = y_s1;
+            reconstructed(i-1).yRangeS2 = y_s2;
         end
-         
     end
-    
+    joined_lineX1 = [];
+    joined_lineY1 = [];
+    joined_lineX2 = [];
+    joined_lineY2 = [];
+
+    for i=1:length(reconstructed)
+        joined_lineX1 = [joined_lineX1 reconstructed(i).xRangeS1];
+        joined_lineX2 = [joined_lineX2 reconstructed(i).xRangeS2];
+        joined_lineY1 = [joined_lineY1 reconstructed(i).yRangeS1];
+        joined_lineY2 = [joined_lineY2 reconstructed(i).yRangeS2];
+    end
+    coord_array = {joined_lineX1, joined_lineY1, joined_lineX2, joined_lineY2};
+end
+
+function cam_bounds = find_cam_boundary(position, car_angle, cam_height, aov, cam_angle)
+    %need the car + experimentation to find aov  
+    d = cam_height/cos(cam_angle);
+    s = cam_height*tan(cam_angle);
+    change_mid_x = s*cos(car_angle);
+    change_mid_y = s*sin(car_angle);
+    theta = aov/2;
+    change_left = d*tan(theta);
+    change_left_y = change_left*cos(car_angle);
+    change_left_x = change_left*sin(car_angle);
+    %the right change from the center is the same as left, but negative
+    cam_mid_x = position(1) + change_mid_x;
+    cam_mid_y = position(2) + change_mid_y;
+    x1 = cam_mid_x + change_left_x;
+    y1 = cam_mid_y + change_left_y;
+    x2 = cam_mid_x - change_left_x;
+    y2 = cam_mid_y - change_left_y;
+    cam_bounds = {[x1,y1], [x2,y2], [cam_mid_x,cam_mid_y]};
 end
 
 % ckeckOverlap function
