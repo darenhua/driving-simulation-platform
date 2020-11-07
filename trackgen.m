@@ -15,6 +15,7 @@ show_process = 1;  % 1: show section locations in the figure, 0: don't show
 show_loc = 1;  % 1: show section locations in the figure, 0: don't show
 show_grid = 1;
 full_plot = [];
+defaultAx = get(gca);
 
 % ask user to input the target track length
 %target_length = input('Input Target Track Length (Even Number, Greater than 4): ');
@@ -211,7 +212,9 @@ while track_length ~= target_length
 end
 
 %track created
-car_angle = 0;
+car_angle = pi/6;
+%car_angle = 0;
+
 cam_height = 2;
 aov = pi/3;
 cam_angle = pi/6;
@@ -301,9 +304,103 @@ plot(linescanX, linescanY, 'Color', 'm');
 cam_inner = InterX([linescanX;linescanY],[coord_arr{1,1};coord_arr{1,2}]);
 cam_outer = InterX([linescanX;linescanY],[coord_arr{1,3};coord_arr{1,4}]);
 plot_intersect(cam_inner, cam_outer);
+%right now, the program has the full camera line and the intersection
+%points. We want the magnitude of the vector from each edge of the camera
+%line to the closest intersection point. 
+camera_lengths = calculate_distances(cam_inner, cam_outer, cam_bounds);
+waveform = generateWaveform(camera_lengths);
+noise = generateNoise(waveform, 33);
+wav_x = linspace(1, 128, 128);
+wav_y = waveform + noise;
+waveformAxes = axes(f1);
+waveformAxes.Units = 'pixels';
+waveformAxes.Position = [400 200 150 200];
+waveformAxes.Title.String = "Linescan Camera Waveform";
+waveformAxes.XLabel.String = "Pixel";
+waveformAxes.YLabel.String = "Grayscale Value";
+waveformAxes.XLim = [1 128];
+waveformAxes.YLim = [0 9];
+plot(wav_x, wav_y);
 
+function noise = generateNoise(waveform, snr)
+    %the lower signal to noise ratio, the more noisy function
+    waveLength = length(waveform);
+    signalPower = (sum(abs(waveform).^2))/waveLength;
+    noisePower =  signalPower/(10^(snr/10));
+    %we want random amount of additon/subtraction: range (-1,1)
+    randomArr = (2 .* rand(1,waveLength)) - 1;
+    noise = sqrt(noisePower) * randomArr;
+end
+
+function camera_lengths = calculate_distances(cam_inner, cam_outer, cam_bounds)
+    %future fix: need to have this function be able to handle if the camera
+    %has no intersect but only sees track, not floor
+    if isempty(cam_inner) && isempty(cam_outer)
+        distanceL = 0;
+        distanceR = 0;
+        center = 0;
+    elseif isempty(cam_inner)
+        distanceL = 0;
+        distanceR = norm(cam_outer - cam_bounds{1,2});
+        center = norm(cam_bounds{1,1}-cam_outer);
+    elseif isempty(cam_outer)
+        distanceR = 0;
+        distanceL = norm(cam_inner - cam_bounds{1,1});
+        center = norm(cam_bounds{1,2}-cam_inner);
+    else
+        distanceL = norm(cam_inner - cam_bounds{1,1});
+        distanceR = norm(cam_outer - cam_bounds{1,2});
+        center = norm(cam_inner - cam_outer);
+    end
+    camera_lengths = [distanceL, center, distanceR];
+end
 % output track info
 %output_track(track, track_length, s, show_loc, f1);
+function waveform = generateWaveform(camera_lengths)
+    waveform = zeros(1,128);
+    cam_length = 0;
+    %cam_px_length = 0;
+    %cam_length is length of camera sight line in feet
+    cam_px = [];
+    for i = 1:length(camera_lengths)
+        if ~isempty(camera_lengths(i))
+            cam_length = cam_length + camera_lengths(i);
+            %cam_px_length = cam_px_length + 1; 
+        end
+    end
+    %cam_px = zeros(cam_px_length);
+    for i = 1:length(camera_lengths)
+        if ~isempty(camera_lengths(i))
+            %future: preallocate
+            cam_px = [cam_px (camera_lengths(i)*128)/cam_length];
+        end
+    end
+    
+    
+    if camera_lengths(1) == 0 && camera_lengths(2) == 0 && camera_lengths(3) == 0
+        waveform = waveform + 3.5;
+    elseif camera_lengths(1) == 0
+        right_px = int16((camera_lengths(3)*128)/cam_length);
+        center_px = int16((camera_lengths(2)*128)/cam_length);
+        waveform(1:center_px) = waveform(1:center_px) + 8.5;
+        waveform(center_px+1:center_px+right_px) = waveform(center_px+1:center_px+right_px) + 3.5;
+    elseif camera_lengths(3) == 0 
+        left_px = int16((camera_lengths(1)*128)/cam_length);
+        center_px = int16((camera_lengths(2)*128)/cam_length);
+        waveform(1:left_px-1) = waveform(1:left_px-1) + 3.5;
+        waveform(left_px:center_px+left_px) = waveform(left_px:center_px+left_px) + 8.5;
+    else
+        %no other scenarios, as this is based off of outputs from
+        %calculate_distances function
+        left_px = int16((camera_lengths(1)*128)/cam_length);
+        right_px = int16((camera_lengths(3)*128)/cam_length);
+        center_px = int16((camera_lengths(2)*128)/cam_length);
+        waveform(1:left_px-1) = waveform(1:left_px-1) + 3.5;
+        waveform(left_px:center_px+left_px) = waveform(left_px:center_px+left_px) + 8.5;
+        waveform(center_px+left_px+1:center_px+left_px+right_px) = waveform(center_px+left_px+1:center_px+left_px+right_px) + 3.5;
+    end
+
+end
 
 function plot_intersect(cam_inner, cam_outer)
     if ~isempty(cam_inner)
@@ -554,11 +651,20 @@ function cam_bounds = find_cam_boundary(position, car_angle, cam_height, aov, ca
     change_left_y = change_left*cos(car_angle);
     change_left_x = change_left*sin(car_angle);
     %the right change from the center is the same as left, but negative
+    if (0<=car_angle) && (car_angle<90)
+        car_dir = [0, 1];
+    elseif (90<=car_angle) && (car_angle<180)
+        car_dir = [1,0];   
+    elseif (180<=car_angle) && (car_angle<270)
+        car_dir = [-1,0];   
+    elseif (270<=car_angle) && (car_angle<360)
+        car_dir = [1,0];   
+    end
     cam_mid_x = position(1) + change_mid_x;
     cam_mid_y = position(2) + change_mid_y;
-    x1 = cam_mid_x + change_left_x;
+    x1 = cam_mid_x - change_left_x;
     y1 = cam_mid_y + change_left_y;
-    x2 = cam_mid_x - change_left_x;
+    x2 = cam_mid_x + change_left_x;
     y2 = cam_mid_y - change_left_y;
     cam_bounds = {[x1,y1], [x2,y2], [cam_mid_x,cam_mid_y]};
 end
