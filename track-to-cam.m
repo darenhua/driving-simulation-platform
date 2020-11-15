@@ -8,7 +8,7 @@
 %           3) camera waveform as txt file 
 %           4) camera waveform as a png file 
 
-clc, clear;
+clc, clear, clf;
 frequency = 0; % value range [0,5]
 show_process = 1;  % 1: show section locations in the figure, 0: don't show
 show_loc = 1;  % 1: show section locations in the figure, 0: don't show
@@ -17,10 +17,15 @@ full_plot = [];
 defaultAx = get(gca);
 
 %import track data
-import_track = readtable('track_8_11-12-2020-20-40.csv');
+import_track = readtable('track_8_11-14-2020-04-00.csv');
 s = table2struct(import_track);
 track_length = length(s);
-track = fileread('track_8_11-12-2020-20-40.txt');
+track = fileread('track_8_11-14-2020-04-00.txt');
+import_vehicle = fopen('pos_11-14-2020-19-51.txt', 'rt');
+initialState = str2num(fgetl(import_vehicle));
+inputs = str2num(fgetl(import_vehicle));
+state = str2num(fgetl(import_vehicle));
+
 
 %fixing up track re-imported data
 for i = 1:track_length
@@ -43,16 +48,22 @@ set(f1,'position',[x0,y0,width,height])
 hold on;
 
 
+%plot car starting point
+initialX = initialState(1);
+initialY = initialState(2);
+
+plot(initialX, initialY, '.', 'MarkerSize', 30, 'Color', 'r')
+
 %track created
-car_angle = pi/6;
-%car_angle = 0;
+%car_angle = pi/6;
 
 cam_height = 2;
 aov = pi/3;
 cam_angle = pi/6;
-car_pos = [0,0];
+car_pos = state(end, 1:2);
 carX = car_pos(1);
 carY = car_pos(2);
+car_angle = state(end,3);
 plot(carX, carY, '.', 'MarkerSize', 30, 'Color', 'g')
 %identify track piece before, current, and future
 %at the moment, all track works in relative manner- based on previous
@@ -504,9 +515,9 @@ function cam_bounds = find_cam_boundary(position, car_angle, cam_height, aov, ca
     cam_bounds = {[x1,y1], [x2,y2], [cam_mid_x,cam_mid_y]};
 end
 
-% output_track function
-function output_camera(waveform, noise, f2);
-% plot track
+% output_cam function
+function output_camera(waveform, noise, f2)
+% plot waveform
 wav_x = linspace(1, 128, 128);
 wav_y = waveform + noise;
 waveformAxes = axes(f2);
