@@ -290,7 +290,9 @@ else
 end
 
 coord_arr = generate_joined_line(prev_tile2, prev_tile, current_tile, next_tile, next_tile2);
+%inner
 plot(coord_arr{1,1}, coord_arr{1,2}, 'Color', 'b', 'LineWidth', 4);
+%outer
 plot(coord_arr{1,3}, coord_arr{1,4}, 'Color', 'r', 'LineWidth', 4);
 
 cam_bounds = find_cam_boundary(car_pos, car_angle, cam_height, aov, cam_angle);
@@ -473,25 +475,49 @@ function coord_array = generate_joined_line(prev_tile2, prev_tile, current_tile,
             %F
             reconstructed(i-1).type = 'F';
             if tile_arr(i).dir(1) ~= 0
-                x1_s1 = tile_arr(i-1).loc(1);
-                x2_s1 = tile_arr(i).loc(1);
-                y1_s1 = tile_arr(i).loc(2)+1;
-                y1_s2 = tile_arr(i).loc(2)-1;
-                x_s1 = linspace(x1_s1,x2_s1);
-                x_length = length(x_s1);
-                y_s1 = zeros(1,x_length) + y1_s1;
-                x_s2 = linspace(x1_s1,x2_s1);
-                y_s2 = zeros(1,x_length) + y1_s2;
+                if tile_arr(i).dir(1) > 0
+                    x1_s1 = tile_arr(i-1).loc(1);
+                    x2_s1 = tile_arr(i).loc(1);
+                    y1_s1 = tile_arr(i).loc(2)+1;
+                    y1_s2 = tile_arr(i).loc(2)-1;
+                    x_s1 = linspace(x1_s1,x2_s1);
+                    x_length = length(x_s1);
+                    y_s1 = zeros(1,x_length) + y1_s1;
+                    x_s2 = linspace(x1_s1,x2_s1);
+                    y_s2 = zeros(1,x_length) + y1_s2;
+                else
+                    x1_s1 = tile_arr(i-1).loc(1);
+                    x2_s1 = tile_arr(i).loc(1);
+                    y1_s1 = tile_arr(i).loc(2)+1;
+                    y1_s2 = tile_arr(i).loc(2)-1;
+                    x_s1 = linspace(x1_s1,x2_s1);
+                    x_length = length(x_s1);
+                    y_s1 = zeros(1,x_length) + y1_s1;
+                    x_s2 = linspace(x1_s1,x2_s1);
+                    y_s2 = zeros(1,x_length) + y1_s2;                    
+                end
             else
-                x1_s1 = tile_arr(i).loc(1)-1;
-                x1_s2 = tile_arr(i).loc(1)+1;
-                y1_s1 = tile_arr(i-1).loc(2);
-                y2_s1 = tile_arr(i).loc(2);
-                y_s1 = linspace(y1_s1,y2_s1);
-                y_length = length(y_s1);
-                x_s1 = zeros(1,y_length) + x1_s1;
-                y_s2 = linspace(y1_s1,y2_s1);
-                x_s2 = zeros(1,y_length) + x1_s2;
+                if tile_arr(i).dir(2) > 0
+                    x1_s1 = tile_arr(i).loc(1)-1;
+                    x1_s2 = tile_arr(i).loc(1)+1;
+                    y1_s1 = tile_arr(i-1).loc(2);
+                    y2_s1 = tile_arr(i).loc(2);
+                    y_s1 = linspace(y1_s1,y2_s1);
+                    y_length = length(y_s1);
+                    x_s1 = zeros(1,y_length) + x1_s1;
+                    y_s2 = linspace(y1_s1,y2_s1);
+                    x_s2 = zeros(1,y_length) + x1_s2;
+                else
+                    x1_s1 = tile_arr(i).loc(1)+1;
+                    x1_s2 = tile_arr(i).loc(1)-1;
+                    y1_s1 = tile_arr(i-1).loc(2);
+                    y2_s1 = tile_arr(i).loc(2);
+                    y_s1 = linspace(y1_s1,y2_s1);
+                    y_length = length(y_s1);
+                    x_s1 = zeros(1,y_length) + x1_s1;
+                    y_s2 = linspace(y1_s1,y2_s1);
+                    x_s2 = zeros(1,y_length) + x1_s2;
+                end
             end
             reconstructed(i-1).xRangeS1 = x_s1;
             reconstructed(i-1).xRangeS2 = x_s2;
@@ -522,8 +548,8 @@ function coord_array = generate_joined_line(prev_tile2, prev_tile, current_tile,
                     x2_s2 = tile_arr(i-1).loc(1) + 1;
                     x_s1 = linspace(x1_s1, x2_s1);
                     x_s2 = linspace(x1_s2, x2_s2);
-                    th_s1 = -acos(x_s1-centerX);
-                    th_s2 = -acos((x_s2-centerX)/3);
+                    th_s1 = acos(x_s1-centerX);
+                    th_s2 = acos((x_s2-centerX)/3);
                     y_s1 = sin(th_s1) + centerY;
                     y_s2 = 3*sin(th_s2) + centerY;
                 end
@@ -630,7 +656,7 @@ function coord_array = generate_joined_line(prev_tile2, prev_tile, current_tile,
     joined_lineY1 = [];
     joined_lineX2 = [];
     joined_lineY2 = [];
-
+    %diagonal line issue happens around reconstruction
     for i=1:length(reconstructed)
         joined_lineX1 = [joined_lineX1 reconstructed(i).xRangeS1];
         joined_lineX2 = [joined_lineX2 reconstructed(i).xRangeS2];
