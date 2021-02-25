@@ -1,7 +1,17 @@
-# virtual-autonomous-car-simulator
+# Autonomous Driving Simulation Platform
 Remote solution for physical STEM competition in COVID
 
-Rose-Hulman University hosts the High School Autonomous Vehicle Competition, a contest for high school students to learn camera-based autonomous driving on random and set tracks. Due to COVID-19, a physical competition is becoming increasingly difficult as many students stay remote and travel is limited. 
-At Eleanor Roosevelt High School, we are developing a simulator that allows for the same STEM activity, with the same MATLAB and Simulink challenges, without the physical interaction aspect.
+## Task
+Build a platform that allows for real-time simulation of cars in the High School Autonomous Vehicle Competition. ([HSAVC](https://www.rose-hulman.edu/academics/educational-outreach/autonomous-vehicle-challenge/index.html))
 
-STATUS 12/9/2020: Finished: working simulator created in MATLAB. In progress translating the program into Simulink. Small bugs fixed in track recreation function. TODO: Fix more bugs in track recreation, improve camera generation, translate into simulink. 
+## Criteria
+* Fast, real-time simulation.
+* Up to 90% simulation motion accuracy compared to real life camera footage.
+* Accessible, simple UI for using the simulator.
+
+## How to use it?
+Download this repository as a ZIP file onto your computer.
+Extract the file.
+Install MATLAB if you haven't already, and run MATLAB.
+Under the apps section in MATLAB, press the "Install App" icon, and select "Track-Generator.mlappinstall" and "Simulator.mlappinstall" from the extracted compressed file when prompted.
+#TODO NEED TO EXPLAIN HOW TO USE THE ACTUAL APPS
