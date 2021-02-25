@@ -1,5 +1,4 @@
 # Autonomous Driving Simulation Platform
-Remote solution for physical STEM competition in COVID
 
 ## Task
 Build a platform that allows for real-time simulation of cars in the High School Autonomous Vehicle Competition. ([HSAVC](https://www.rose-hulman.edu/academics/educational-outreach/autonomous-vehicle-challenge/index.html))
