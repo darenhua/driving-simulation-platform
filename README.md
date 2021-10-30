@@ -1,114 +1,34 @@
 <p align="center">
   <a href="" rel="noopener">
- <img width=200px height=200px src="https://i.imgur.com/6wj0hh6.jpg" alt="Project logo"></a>
+ <img width=200px height=200px src="./hsavc_logo.png" alt="Project logo"></a>
 </p>
 
-<h3 align="center">Project Title</h3>
+<h1 align="center">Autonomous Driving Simulation Patform</h1>
 
-<div align="center">
-
-[![Status](https://img.shields.io/badge/status-active-success.svg)]()
-[![GitHub Issues](https://img.shields.io/github/issues/kylelobo/The-Documentation-Compendium.svg)](https://github.com/kylelobo/The-Documentation-Compendium/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/kylelobo/The-Documentation-Compendium.svg)](https://github.com/kylelobo/The-Documentation-Compendium/pulls)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
-
-</div>
-
----
-
-<p align="center"> Few lines describing your project.
+<p align="center"> Matlab Simulator Application for Rose-Hulmann University's High School Autonomous Vehicle Competition.
     <br> 
 </p>
 
-## 📝 Table of Contents
-
-- [About](#about)
-- [Getting Started](#getting_started)
-- [Deployment](#deployment)
-- [Usage](#usage)
-- [Built Using](#built_using)
-- [TODO](../TODO.md)
-- [Contributing](../CONTRIBUTING.md)
-- [Authors](#authors)
-- [Acknowledgments](#acknowledgement)
-
 ## 🧐 About <a name = "about"></a>
 
-Write about 1-2 paragraphs describing the purpose of your project.
-
-## 🏁 Getting Started <a name = "getting_started"></a>
-
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See [deployment](#deployment) for notes on how to deploy the project on a live system.
-
-### Prerequisites
-
-What things you need to install the software and how to install them.
-
-```
-Give examples
-```
-
-### Installing
-
-A step by step series of examples that tell you how to get a development env running.
-
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
-
-```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo.
-
-## 🔧 Running the tests <a name = "tests"></a>
-
-Explain how to run the automated tests for this system.
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
+Rose-Hulman University hosts the High School Autonomous Vehicle Competition, a contest for high school students to learn camera-based autonomous driving on random and set tracks. Due to COVID-19, a physical competition is becoming increasingly difficult as many students stay remote and travel is limited. At Eleanor Roosevelt High School, I developed a simulator that allows for the same STEM activity, with the same MATLAB and Simulink challenges, without the physical interaction aspect.
 
 ## 🎈 Usage <a name="usage"></a>
 
-Add notes about how to use the system.
+Download the two installation files:
 
-## 🚀 Deployment <a name = "deployment"></a>
+[High_School_Autonomous_Vehicle_Competition_Track_Generator.mlappinstall](#usage)
+[High_School_Autonomous_Vehicle_Simulator.mlappinstall](#usage)
 
-Add additional notes about how to deploy this on a live system.
+and run them from the terminal, file explorer, or within MATLAB. They can be accessed from the MATLAB App toolbar.
 
-## ⛏️ Built Using <a name = "built_using"></a>
+Track Generator
+![](2021-10-29-23-14-38.png)
+Simulator
+![](2021-10-29-23-15-07.png)
 
-- [MongoDB](https://www.mongodb.com/) - Database
-- [Express](https://expressjs.com/) - Server Framework
-- [VueJs](https://vuejs.org/) - Web Framework
-- [NodeJs](https://nodejs.org/en/) - Server Environment
+When using the applications, first run the Track Generator and export a track into any directory. Then, import that track from the Simulator and follow the user interface to run the car.
+<br/>
+<br/>
 
-## ✍️ Authors <a name = "authors"></a>
-
-- [@kylelobo](https://github.com/kylelobo) - Idea & Initial work
-
-See also the list of [contributors](https://github.com/kylelobo/The-Documentation-Compendium/contributors) who participated in this project.
-
-## 🎉 Acknowledgements <a name = "acknowledgement"></a>
-
-- Hat tip to anyone whose code was used
-- Inspiration
-- References
+Please see this video if you'd like to learn more! [https://youtu.be/DM4fKB-0bqc](https://youtu.be/DM4fKB-0bqc)
